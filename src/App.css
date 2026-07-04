@@ -1,60 +1,132 @@
-#stylist {
+.page {
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
+}
+
+.eyebrow {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--secondary);
+}
+
+.label-sm {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--secondary);
+}
+
+/* Header */
+
+.site-header {
+  display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 32px;
+  height: 80px;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* Content shell */
+
+.content {
   flex-grow: 1;
-  padding: 64px 20px;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 48px 20px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
   box-sizing: border-box;
 
-  @media (max-width: 1024px) {
-    padding: 32px 20px;
-    gap: 24px;
+  @media (max-width: 640px) {
+    padding: 32px 20px 48px;
+    gap: 32px;
   }
 }
 
-.intro {
-  text-align: center;
-  max-width: 480px;
+/* Hero */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--primary);
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+  }
 
   h1 {
-    margin-bottom: 12px;
-  }
+    font-size: 40px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    font-style: italic;
+    text-transform: uppercase;
+    margin-top: 8px;
 
-  p {
-    color: var(--text);
+    @media (min-width: 768px) {
+      font-size: 56px;
+    }
   }
 }
 
-.card {
+.hero-desc {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--on-surface-variant);
+  max-width: 380px;
+}
+
+/* Panel (upload + fields + action) */
+
+.panel {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
   padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
   box-sizing: border-box;
-  background: var(--code-bg);
 }
 
 .photo-upload {
   display: block;
   aspect-ratio: 1 / 1;
-  border: 2px dashed var(--border);
-  border-radius: 12px;
+  border: 1px dashed var(--outline);
   cursor: pointer;
   overflow: hidden;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, background-color 0.3s;
 
   &:hover {
-    border-color: var(--accent-border);
+    border-color: var(--primary);
   }
 
   &.dragging {
-    border-color: var(--accent);
-    background: var(--accent-bg);
+    border-color: var(--primary);
+    border-style: solid;
+    background: var(--surface-container);
   }
 }
 
@@ -71,13 +143,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  color: var(--text);
+  gap: 10px;
+  padding: 0 24px;
+  text-align: center;
 
   .icon {
-    width: 36px;
-    height: 36px;
-    color: var(--accent);
+    font-size: 32px;
+    color: var(--outline);
   }
 }
 
@@ -94,72 +166,119 @@
   text-align: left;
 
   label {
-    font-size: 14px;
-    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--secondary);
   }
 
   input {
     font: inherit;
     font-size: 16px;
     padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
-    color: var(--text-h);
+    border: 1px solid var(--outline-variant);
+    background: var(--surface);
+    color: var(--on-surface);
     box-sizing: border-box;
 
     &:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 1px;
+      outline: none;
+      border-color: var(--primary);
     }
   }
 }
 
 .analyze {
-  font: inherit;
-  font-size: 16px;
-  font-weight: 500;
-  padding: 12px;
-  border-radius: 8px;
-  border: none;
-  color: #fff;
-  background: var(--accent);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 14px;
+  border: 1px solid var(--primary);
+  color: var(--on-primary);
+  background: var(--primary);
   cursor: pointer;
   transition: opacity 0.3s;
 
   &:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
   }
 
   &:not(:disabled):hover {
-    opacity: 0.9;
+    opacity: 0.85;
   }
 }
 
 .error-message {
-  font-size: 14px;
-  color: #e5484d;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--error);
   text-align: left;
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
 }
+
+/* Report */
 
 .report {
   width: 100%;
-  max-width: 400px;
-  text-align: left;
-  padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-sizing: border-box;
-  background: var(--code-bg);
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 48px 24px;
+  border-top: 1px solid var(--outline-variant);
+  border-bottom: 1px solid var(--outline-variant);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: fade-up 0.5s ease;
+
+  .quote-icon {
+    font-size: 40px;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
 
   h2 {
-    color: var(--text-h);
+    font-size: 26px;
+    font-style: italic;
+    margin: 4px 0 12px;
   }
 
   p {
-    color: var(--text);
+    text-align: left;
     white-space: pre-wrap;
-    line-height: 145%;
+    line-height: 1.7;
+    color: var(--on-surface-variant);
   }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Footer */
+
+.site-footer {
+  display: flex;
+  justify-content: center;
+  padding: 24px 20px;
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
 }

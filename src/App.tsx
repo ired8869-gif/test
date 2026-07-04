@@ -82,97 +82,105 @@ function App() {
   }
 
   return (
-    <section id="stylist">
-      <div className="intro">
-        <h1>AI 퍼스널 스타일리스트</h1>
-        <p>사진과 키, 몸무게를 입력하면 어울리는 스타일을 분석해드려요</p>
-      </div>
+    <div className="page">
+      <header className="site-header">
+        <span className="brand">STYLER AI</span>
+      </header>
 
-      <div className="card">
-        <label
-          className={`photo-upload${isDragging ? ' dragging' : ''}`}
-          htmlFor="photo-input"
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {photoPreview ? (
-            <img src={photoPreview} alt="업로드한 사진 미리보기" className="preview" />
-          ) : (
-            <div className="placeholder">
-              <svg className="icon" role="presentation" aria-hidden="true" viewBox="0 0 24 24">
-                <path
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5"
-                  d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.379a1 1 0 0 0 .707-.293l1.128-1.128A2 2 0 0 1 11.128 4h1.744a2 2 0 0 1 1.414.586l1.128 1.128A1 1 0 0 0 16.12 6H17.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"
-                />
-                <circle cx="12" cy="12.5" r="3.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-              <span>클릭하거나 파일을 끌어다 놓으세요</span>
+      <main className="content">
+        <section className="hero">
+          <div>
+            <span className="eyebrow">AI STYLE CONSULTING</span>
+            <h1>AI 퍼스널 스타일리스트</h1>
+          </div>
+          <p className="hero-desc">
+            사진 한 장과 키, 몸무게만 입력하면 AI가 당신의 체형과 분위기를 분석해 어울리는 스타일을
+            큐레이션합니다.
+          </p>
+        </section>
+
+        <section className="panel">
+          <label
+            className={`photo-upload${isDragging ? ' dragging' : ''}`}
+            htmlFor="photo-input"
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {photoPreview ? (
+              <img src={photoPreview} alt="업로드한 사진 미리보기" className="preview" />
+            ) : (
+              <div className="placeholder">
+                <span className="material-symbols-outlined icon">add_a_photo</span>
+                <span className="eyebrow">클릭하거나 파일을 끌어다 놓으세요</span>
+              </div>
+            )}
+            <input
+              id="photo-input"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              hidden
+            />
+          </label>
+
+          <div className="fields">
+            <div className="field">
+              <label htmlFor="height-input">키 (cm)</label>
+              <input
+                id="height-input"
+                type="number"
+                inputMode="decimal"
+                min={100}
+                max={250}
+                placeholder="예: 170"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+              />
             </div>
+            <div className="field">
+              <label htmlFor="weight-input">몸무게 (kg)</label>
+              <input
+                id="weight-input"
+                type="number"
+                inputMode="decimal"
+                min={30}
+                max={200}
+                placeholder="예: 60"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <button type="button" className="analyze" disabled={!canAnalyze} onClick={handleAnalyze}>
+            {isAnalyzing ? '분석 중...' : '분석하기'}
+          </button>
+
+          {error && (
+            <p className="error-message">
+              <span className="material-symbols-outlined">error</span>
+              {error}
+            </p>
           )}
-          <input
-            id="photo-input"
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoChange}
-            hidden
-          />
-        </label>
+        </section>
 
-        <div className="fields">
-          <div className="field">
-            <label htmlFor="height-input">키 (cm)</label>
-            <input
-              id="height-input"
-              type="number"
-              inputMode="decimal"
-              min={100}
-              max={250}
-              placeholder="예: 170"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="weight-input">몸무게 (kg)</label>
-            <input
-              id="weight-input"
-              type="number"
-              inputMode="decimal"
-              min={30}
-              max={200}
-              placeholder="예: 60"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-            />
-          </div>
-        </div>
+        {report && (
+          <section className="report">
+            <span className="material-symbols-outlined quote-icon">format_quote</span>
+            <span className="eyebrow">STYLE CONSULTING REPORT</span>
+            <h2>당신을 위한 스타일 제안</h2>
+            <p>{report}</p>
+          </section>
+        )}
+      </main>
 
-        <button
-          type="button"
-          className="analyze"
-          disabled={!canAnalyze}
-          onClick={handleAnalyze}
-        >
-          {isAnalyzing ? '분석 중...' : '분석하기'}
-        </button>
-
-        {error && <p className="error-message">{error}</p>}
-      </div>
-
-      {report && (
-        <div className="report">
-          <h2>스타일 컨설팅 보고서</h2>
-          <p>{report}</p>
-        </div>
-      )}
-    </section>
+      <footer className="site-footer">
+        <span className="label-sm">© 2026 STYLER AI. ALL RIGHTS RESERVED.</span>
+      </footer>
+    </div>
   )
 }
 
