@@ -7,9 +7,12 @@ function App() {
   const [isDragging, setIsDragging] = useState(false)
   const [height, setHeight] = useState('')
   const [weight, setWeight] = useState('')
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [report, setReport] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const canAnalyze = photoPreview !== null && height !== '' && weight !== ''
+  const canAnalyze = photoPreview !== null && height !== '' && weight !== '' && !isAnalyzing
 
   const loadPhoto = (file: File) => {
     if (!file.type.startsWith('image/')) return
@@ -45,9 +48,37 @@ function App() {
     if (file) loadPhoto(file)
   }
 
-  const handleAnalyze = () => {
-    if (!canAnalyze) return
-    console.log('분석 요청', { height, weight })
+  const handleAnalyze = async () => {
+    if (!canAnalyze || !photoPreview) return
+
+    const [meta, base64] = photoPreview.split(',')
+    const mimeType = meta.match(/data:(.*);base64/)?.[1] ?? 'image/jpeg'
+
+    setIsAnalyzing(true)
+    setError(null)
+    setReport(null)
+
+    try {
+      const res = await fetch('/api/consult', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64, mimeType, height, weight }),
+      })
+
+      let data: { report?: string; error?: string } = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('서버 응답을 처리하지 못했습니다.')
+      }
+
+      if (!res.ok) throw new Error(data.error ?? '분석에 실패했습니다.')
+      setReport(data.report ?? null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '분석에 실패했습니다.')
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   return (
@@ -129,9 +160,18 @@ function App() {
           disabled={!canAnalyze}
           onClick={handleAnalyze}
         >
-          분석하기
+          {isAnalyzing ? '분석 중...' : '분석하기'}
         </button>
+
+        {error && <p className="error-message">{error}</p>}
       </div>
+
+      {report && (
+        <div className="report">
+          <h2>스타일 컨설팅 보고서</h2>
+          <p>{report}</p>
+        </div>
+      )}
     </section>
   )
 }
