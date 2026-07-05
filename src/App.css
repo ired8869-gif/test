@@ -213,6 +213,29 @@
   }
 }
 
+.purchase-panel {
+  align-items: center;
+  text-align: center;
+  padding: 40px 28px;
+
+  .icon {
+    font-size: 32px;
+    color: var(--primary);
+  }
+
+  h2 {
+    font-size: 22px;
+    font-style: italic;
+    margin: 4px 0 0;
+  }
+}
+
+.purchase-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--on-surface-variant);
+}
+
 .error-message {
   display: flex;
   align-items: center;
