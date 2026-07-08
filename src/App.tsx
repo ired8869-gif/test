@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
+import type { Session } from '@supabase/supabase-js'
+import { supabase } from './lib/supabase'
+import AuthForm from './AuthForm'
 import './App.css'
 
 const UNLOCK_KEY = 'styler-ai:unlocked'
@@ -22,6 +25,8 @@ async function verifyCheckout(checkoutId: string): Promise<boolean> {
 }
 
 function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [isLoadingSession, setIsLoadingSession] = useState(true)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [height, setHeight] = useState('')
@@ -37,6 +42,25 @@ function App() {
   const [isVerifying, setIsVerifying] = useState(false)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [purchaseError, setPurchaseError] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setIsLoadingSession(false)
+    })
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+    })
+
+    return () => subscription.subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    localStorage.removeItem(UNLOCK_KEY)
+    setIsUnlocked(false)
+  }
 
   useEffect(() => {
     const checkoutId = new URLSearchParams(window.location.search).get('checkout_id')
@@ -144,6 +168,14 @@ function App() {
     <div className="page">
       <header className="site-header">
         <span className="brand">STYLER AI</span>
+        {session && (
+          <div className="user-bar">
+            <span className="label-sm">{session.user.email}</span>
+            <button type="button" className="sign-out" onClick={handleSignOut}>
+              로그아웃
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="content">
@@ -158,7 +190,9 @@ function App() {
           </p>
         </section>
 
-        {isVerifying ? (
+        {isLoadingSession ? null : !session ? (
+          <AuthForm />
+        ) : isVerifying ? (
           <section className="panel purchase-panel">
             <span className="material-symbols-outlined icon">hourglass_top</span>
             <span className="eyebrow">결제 확인 중...</span>
