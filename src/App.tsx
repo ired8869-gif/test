@@ -3,6 +3,8 @@ import type { ChangeEvent, DragEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import AuthForm from './AuthForm'
+import MyPage from './MyPage'
+import ResetPasswordForm from './ResetPasswordForm'
 import './App.css'
 
 const UNLOCK_KEY = 'styler-ai:unlocked'
@@ -27,6 +29,8 @@ async function verifyCheckout(checkoutId: string): Promise<boolean> {
 function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoadingSession, setIsLoadingSession] = useState(true)
+  const [view, setView] = useState<'main' | 'mypage'>('main')
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [height, setHeight] = useState('')
@@ -49,8 +53,13 @@ function App() {
       setIsLoadingSession(false)
     })
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
+      if (!nextSession) setView('main')
+      if (event === 'PASSWORD_RECOVERY') {
+        window.history.replaceState({}, '', window.location.pathname)
+        setIsPasswordRecovery(true)
+      }
     })
 
     return () => subscription.subscription.unsubscribe()
@@ -60,6 +69,13 @@ function App() {
     await supabase.auth.signOut()
     localStorage.removeItem(UNLOCK_KEY)
     setIsUnlocked(false)
+    setView('main')
+  }
+
+  const handleAccountDeleted = () => {
+    localStorage.removeItem(UNLOCK_KEY)
+    setIsUnlocked(false)
+    setView('main')
   }
 
   useEffect(() => {
@@ -171,6 +187,9 @@ function App() {
         {session && (
           <div className="user-bar">
             <span className="label-sm">{session.user.email}</span>
+            <button type="button" className="my-page-link" onClick={() => setView('mypage')}>
+              마이페이지
+            </button>
             <button type="button" className="sign-out" onClick={handleSignOut}>
               로그아웃
             </button>
@@ -179,121 +198,129 @@ function App() {
       </header>
 
       <main className="content">
-        <section className="hero">
-          <div>
-            <span className="eyebrow">AI STYLE CONSULTING</span>
-            <h1>AI 퍼스널 스타일리스트</h1>
-          </div>
-          <p className="hero-desc">
-            사진 한 장과 키, 몸무게만 입력하면 AI가 당신의 체형과 분위기를 분석해 어울리는 스타일을
-            큐레이션합니다.
-          </p>
-        </section>
-
-        {isLoadingSession ? null : !session ? (
-          <AuthForm />
-        ) : isVerifying ? (
-          <section className="panel purchase-panel">
-            <span className="material-symbols-outlined icon">hourglass_top</span>
-            <span className="eyebrow">결제 확인 중...</span>
-          </section>
-        ) : !isUnlocked ? (
-          <section className="panel purchase-panel">
-            <span className="material-symbols-outlined icon">lock</span>
-            <span className="eyebrow">PREMIUM STYLE CONSULTING</span>
-            <h2>이용권을 구매하고 시작하세요</h2>
-            <p className="purchase-desc">
-              결제 후 사진과 신체 정보를 기반으로 한 맞춤 스타일 컨설팅 리포트를 받아보실 수
-              있습니다.
-            </p>
-            <button type="button" className="analyze" disabled={isPurchasing} onClick={handlePurchase}>
-              {isPurchasing ? '결제 페이지로 이동 중...' : '구매하고 시작하기'}
-            </button>
-
-            {purchaseError && (
-              <p className="error-message">
-                <span className="material-symbols-outlined">error</span>
-                {purchaseError}
-              </p>
-            )}
-          </section>
+        {isPasswordRecovery ? (
+          <ResetPasswordForm onDone={() => setIsPasswordRecovery(false)} />
+        ) : session && view === 'mypage' ? (
+          <MyPage session={session} onBack={() => setView('main')} onAccountDeleted={handleAccountDeleted} />
         ) : (
           <>
-            <section className="panel">
-              <label
-                className={`photo-upload${isDragging ? ' dragging' : ''}`}
-                htmlFor="photo-input"
-                onDragOver={handleDragOver}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                {photoPreview ? (
-                  <img src={photoPreview} alt="업로드한 사진 미리보기" className="preview" />
-                ) : (
-                  <div className="placeholder">
-                    <span className="material-symbols-outlined icon">add_a_photo</span>
-                    <span className="eyebrow">클릭하거나 파일을 끌어다 놓으세요</span>
-                  </div>
-                )}
-                <input
-                  id="photo-input"
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  hidden
-                />
-              </label>
-
-              <div className="fields">
-                <div className="field">
-                  <label htmlFor="height-input">키 (cm)</label>
-                  <input
-                    id="height-input"
-                    type="number"
-                    inputMode="decimal"
-                    min={100}
-                    max={250}
-                    placeholder="예: 170"
-                    value={height}
-                    onChange={(e) => setHeight(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="weight-input">몸무게 (kg)</label>
-                  <input
-                    id="weight-input"
-                    type="number"
-                    inputMode="decimal"
-                    min={30}
-                    max={200}
-                    placeholder="예: 60"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                  />
-                </div>
+            <section className="hero">
+              <div>
+                <span className="eyebrow">AI STYLE CONSULTING</span>
+                <h1>AI 퍼스널 스타일리스트</h1>
               </div>
-
-              <button type="button" className="analyze" disabled={!canAnalyze} onClick={handleAnalyze}>
-                {isAnalyzing ? '분석 중...' : '분석하기'}
-              </button>
-
-              {error && (
-                <p className="error-message">
-                  <span className="material-symbols-outlined">error</span>
-                  {error}
-                </p>
-              )}
+              <p className="hero-desc">
+                사진 한 장과 키, 몸무게만 입력하면 AI가 당신의 체형과 분위기를 분석해 어울리는 스타일을
+                큐레이션합니다.
+              </p>
             </section>
 
-            {report && (
-              <section className="report">
-                <span className="material-symbols-outlined quote-icon">format_quote</span>
-                <span className="eyebrow">STYLE CONSULTING REPORT</span>
-                <h2>당신을 위한 스타일 제안</h2>
-                <p>{report}</p>
+            {isLoadingSession ? null : !session ? (
+              <AuthForm />
+            ) : isVerifying ? (
+              <section className="panel purchase-panel">
+                <span className="material-symbols-outlined icon">hourglass_top</span>
+                <span className="eyebrow">결제 확인 중...</span>
               </section>
+            ) : !isUnlocked ? (
+              <section className="panel purchase-panel">
+                <span className="material-symbols-outlined icon">lock</span>
+                <span className="eyebrow">PREMIUM STYLE CONSULTING</span>
+                <h2>이용권을 구매하고 시작하세요</h2>
+                <p className="purchase-desc">
+                  결제 후 사진과 신체 정보를 기반으로 한 맞춤 스타일 컨설팅 리포트를 받아보실 수
+                  있습니다.
+                </p>
+                <button type="button" className="analyze" disabled={isPurchasing} onClick={handlePurchase}>
+                  {isPurchasing ? '결제 페이지로 이동 중...' : '구매하고 시작하기'}
+                </button>
+
+                {purchaseError && (
+                  <p className="error-message">
+                    <span className="material-symbols-outlined">error</span>
+                    {purchaseError}
+                  </p>
+                )}
+              </section>
+            ) : (
+              <>
+                <section className="panel">
+                  <label
+                    className={`photo-upload${isDragging ? ' dragging' : ''}`}
+                    htmlFor="photo-input"
+                    onDragOver={handleDragOver}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="업로드한 사진 미리보기" className="preview" />
+                    ) : (
+                      <div className="placeholder">
+                        <span className="material-symbols-outlined icon">add_a_photo</span>
+                        <span className="eyebrow">클릭하거나 파일을 끌어다 놓으세요</span>
+                      </div>
+                    )}
+                    <input
+                      id="photo-input"
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      hidden
+                    />
+                  </label>
+
+                  <div className="fields">
+                    <div className="field">
+                      <label htmlFor="height-input">키 (cm)</label>
+                      <input
+                        id="height-input"
+                        type="number"
+                        inputMode="decimal"
+                        min={100}
+                        max={250}
+                        placeholder="예: 170"
+                        value={height}
+                        onChange={(e) => setHeight(e.target.value)}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="weight-input">몸무게 (kg)</label>
+                      <input
+                        id="weight-input"
+                        type="number"
+                        inputMode="decimal"
+                        min={30}
+                        max={200}
+                        placeholder="예: 60"
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <button type="button" className="analyze" disabled={!canAnalyze} onClick={handleAnalyze}>
+                    {isAnalyzing ? '분석 중...' : '분석하기'}
+                  </button>
+
+                  {error && (
+                    <p className="error-message">
+                      <span className="material-symbols-outlined">error</span>
+                      {error}
+                    </p>
+                  )}
+                </section>
+
+                {report && (
+                  <section className="report">
+                    <span className="material-symbols-outlined quote-icon">format_quote</span>
+                    <span className="eyebrow">STYLE CONSULTING REPORT</span>
+                    <h2>당신을 위한 스타일 제안</h2>
+                    <p>{report}</p>
+                  </section>
+                )}
+              </>
             )}
           </>
         )}
