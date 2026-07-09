@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 interface Env {
-  SUPABASE_URL: string
-  SUPABASE_SERVICE_ROLE_KEY: string
+  VITE_SUPABASE_URL: string
+  SUPABASE_SECRET_KEY: string
 }
 
 export const onRequestPost = async ({
@@ -14,7 +14,7 @@ export const onRequestPost = async ({
 }): Promise<Response> => {
   const jsonHeaders = { 'Content-Type': 'application/json' }
 
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SECRET_KEY) {
     return new Response(
       JSON.stringify({ error: '서버에 Supabase 서비스 키가 설정되어 있지 않습니다.' }),
       { status: 500, headers: jsonHeaders },
@@ -29,7 +29,7 @@ export const onRequestPost = async ({
     })
   }
 
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
