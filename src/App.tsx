@@ -9,6 +9,23 @@ import './App.css'
 
 const UNLOCK_KEY = 'styler-ai:unlocked'
 
+type Plan = 'onetime' | 'subscription'
+
+interface SubscriptionInfo {
+  status: 'active' | 'trialing'
+  trialEnd: string | null
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd: boolean
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
 async function verifyCheckout(checkoutId: string): Promise<boolean> {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
@@ -24,6 +41,32 @@ async function verifyCheckout(checkoutId: string): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 1200))
   }
   return false
+}
+
+async function fetchSubscriptionStatus(accessToken: string): Promise<SubscriptionInfo | null> {
+  try {
+    const res = await fetch('/api/subscription-status', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const data: {
+      subscribed?: boolean
+      status?: 'active' | 'trialing'
+      trialEnd?: string | null
+      currentPeriodEnd?: string | null
+      cancelAtPeriodEnd?: boolean
+    } = await res.json()
+
+    if (!res.ok || !data.subscribed || !data.status) return null
+
+    return {
+      status: data.status,
+      trialEnd: data.trialEnd ?? null,
+      currentPeriodEnd: data.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+    }
+  } catch {
+    return null
+  }
 }
 
 function App() {
@@ -44,8 +87,11 @@ function App() {
     () => typeof window !== 'undefined' && localStorage.getItem(UNLOCK_KEY) === 'true',
   )
   const [isVerifying, setIsVerifying] = useState(false)
-  const [isPurchasing, setIsPurchasing] = useState(false)
+  const [purchasingPlan, setPurchasingPlan] = useState<Plan | null>(null)
   const [purchaseError, setPurchaseError] = useState<string | null>(null)
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(false)
+  const hasAccess = isUnlocked || subscriptionInfo !== null
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -65,6 +111,18 @@ function App() {
     return () => subscription.subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!session) {
+      setSubscriptionInfo(null)
+      return
+    }
+
+    setIsCheckingSubscription(true)
+    fetchSubscriptionStatus(session.access_token)
+      .then(setSubscriptionInfo)
+      .finally(() => setIsCheckingSubscription(false))
+  }, [session])
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     localStorage.removeItem(UNLOCK_KEY)
@@ -79,35 +137,53 @@ function App() {
   }
 
   useEffect(() => {
-    const checkoutId = new URLSearchParams(window.location.search).get('checkout_id')
+    const params = new URLSearchParams(window.location.search)
+    const checkoutId = params.get('checkout_id')
     if (!checkoutId) return
+    const plan: Plan = params.get('plan') === 'subscription' ? 'subscription' : 'onetime'
 
     window.history.replaceState({}, '', window.location.pathname)
     setIsVerifying(true)
     verifyCheckout(checkoutId)
-      .then((success) => {
-        if (success) {
+      .then(async (success) => {
+        if (!success) {
+          setPurchaseError('결제 확인에 실패했습니다. 다시 시도해주세요.')
+          return
+        }
+
+        if (plan === 'onetime') {
           localStorage.setItem(UNLOCK_KEY, 'true')
           setIsUnlocked(true)
-        } else {
-          setPurchaseError('결제 확인에 실패했습니다. 다시 시도해주세요.')
+          return
         }
+
+        const { data } = await supabase.auth.getSession()
+        if (data.session) setSubscriptionInfo(await fetchSubscriptionStatus(data.session.access_token))
       })
       .finally(() => setIsVerifying(false))
   }, [])
 
-  const handlePurchase = async () => {
-    setIsPurchasing(true)
+  const handlePurchase = async (plan: Plan) => {
+    if (!session) return
+
+    setPurchasingPlan(plan)
     setPurchaseError(null)
 
     try {
-      const res = await fetch('/api/checkout', { method: 'POST' })
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ plan }),
+      })
       const data: { url?: string; error?: string } = await res.json()
       if (!res.ok || !data.url) throw new Error(data.error ?? '결제 페이지를 여는 데 실패했습니다.')
       window.location.href = data.url
     } catch (err) {
       setPurchaseError(err instanceof Error ? err.message : '결제 페이지를 여는 데 실패했습니다.')
-      setIsPurchasing(false)
+      setPurchasingPlan(null)
     }
   }
 
@@ -217,12 +293,12 @@ function App() {
 
             {isLoadingSession ? null : !session ? (
               <AuthForm />
-            ) : isVerifying ? (
+            ) : isVerifying || (isCheckingSubscription && !hasAccess) ? (
               <section className="panel purchase-panel">
                 <span className="material-symbols-outlined icon">hourglass_top</span>
-                <span className="eyebrow">결제 확인 중...</span>
+                <span className="eyebrow">{isVerifying ? '결제 확인 중...' : '확인 중...'}</span>
               </section>
-            ) : !isUnlocked ? (
+            ) : !hasAccess ? (
               <section className="panel purchase-panel">
                 <span className="material-symbols-outlined icon">lock</span>
                 <span className="eyebrow">PREMIUM STYLE CONSULTING</span>
@@ -231,9 +307,38 @@ function App() {
                   결제 후 사진과 신체 정보를 기반으로 한 맞춤 스타일 컨설팅 리포트를 받아보실 수
                   있습니다.
                 </p>
-                <button type="button" className="analyze" disabled={isPurchasing} onClick={handlePurchase}>
-                  {isPurchasing ? '결제 페이지로 이동 중...' : '구매하고 시작하기'}
-                </button>
+
+                <div className="plan-grid">
+                  <div className="plan-card">
+                    <span className="plan-name">1회 이용권</span>
+                    <p className="plan-detail">한 번 결제하면 계속 이용할 수 있어요.</p>
+                    <button
+                      type="button"
+                      className="analyze"
+                      disabled={purchasingPlan !== null}
+                      onClick={() => handlePurchase('onetime')}
+                    >
+                      {purchasingPlan === 'onetime' ? '이동 중...' : '구매하고 시작하기'}
+                    </button>
+                  </div>
+
+                  <div className="plan-card featured">
+                    <span className="plan-badge">7일 무료 체험</span>
+                    <span className="plan-name">월 구독</span>
+                    <p className="plan-detail">
+                      7일간 무료로 체험하고, 이후 매달 자동 결제됩니다. 체험 중 해지하면 요금이
+                      청구되지 않아요.
+                    </p>
+                    <button
+                      type="button"
+                      className="analyze"
+                      disabled={purchasingPlan !== null}
+                      onClick={() => handlePurchase('subscription')}
+                    >
+                      {purchasingPlan === 'subscription' ? '이동 중...' : '무료로 체험 시작하기'}
+                    </button>
+                  </div>
+                </div>
 
                 {purchaseError && (
                   <p className="error-message">
@@ -244,6 +349,13 @@ function App() {
               </section>
             ) : (
               <>
+                {subscriptionInfo?.status === 'trialing' && subscriptionInfo.trialEnd && (
+                  <div className="trial-banner">
+                    <span className="material-symbols-outlined">redeem</span>
+                    무료 체험 중 · {formatDate(subscriptionInfo.trialEnd)}부터 정기 결제가 시작됩니다.
+                  </div>
+                )}
+
                 <section className="panel">
                   <label
                     className={`photo-upload${isDragging ? ' dragging' : ''}`}
