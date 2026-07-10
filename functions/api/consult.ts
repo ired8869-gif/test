@@ -7,6 +7,7 @@ interface ConsultRequestBody {
   mimeType?: string
   height?: string
   weight?: string
+  city?: string
 }
 
 interface GeminiPart {
@@ -20,18 +21,18 @@ interface GeminiResponse {
 
 const GEMINI_MODEL = 'gemini-2.5-flash'
 
-function buildPrompt(height: string, weight: string) {
+function buildPrompt(height: string, weight: string, city?: string) {
   return `당신은 전문 퍼스널 스타일리스트입니다. 첨부된 사진과 아래 신체 정보를 참고하여 스타일 컨설팅 보고서를 작성해주세요.
 
 - 키: ${height}cm
-- 몸무게: ${weight}kg
+- 몸무게: ${weight}kg${city ? `\n- 활동 지역: ${city}` : ''}
 
 보고서에는 다음 항목을 포함해주세요:
 1. 체형 분석
 2. 어울리는 스타일과 색상
 3. 추천 코디 (상의/하의/아우터)
-4. 피하면 좋을 스타일
-5. 마무리 조언
+4. 피하면 좋을 스타일${city ? `\n5. ${city}의 최근 날씨와 계절감을 고려한 코디 팁` : ''}
+${city ? '6' : '5'}. 마무리 조언
 
 친절한 어투의 한국어로, 구체적이고 실용적으로 작성해주세요.`
 }
@@ -55,7 +56,7 @@ export const onRequestPost = async ({
     })
   }
 
-  const { image, mimeType, height, weight } = body
+  const { image, mimeType, height, weight, city } = body
   if (!image || !mimeType || !height || !weight) {
     return new Response(JSON.stringify({ error: '사진, 키, 몸무게를 모두 입력해주세요.' }), {
       status: 400,
@@ -91,7 +92,7 @@ export const onRequestPost = async ({
             {
               role: 'user',
               parts: [
-                { text: buildPrompt(height, weight) },
+                { text: buildPrompt(height, weight, city) },
                 { inline_data: { mime_type: mimeType, data: image } },
               ],
             },
